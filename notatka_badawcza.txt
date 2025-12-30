@@ -1,0 +1,207 @@
+Notatka badawcza – RAG chatbot
+
+1) Wykonane modyfikacje
+- Model: zmiana z Bielik 11B 4bit na Qwen/Qwen2.5-1.5B-Instruct (AutoModelForCausalLM + pipeline).
+- Chunking: dzielenie dokumentu na zdania (regex) zamiast linii; mniejsze powtorzenia, krotszy kontekst.
+- Retrieval: FAISS IndexFlatIP, k ograniczone do liczby chunkow, deduplikacja powtarzajacych sie chunkow.
+- Retrieval guardrail: retrieve_context zwraca max score, a ask_bot odmawia odpowiedzi gdy kontekst pusty lub score < 0.35 (document-only).
+- Style: auto-detekcja stylu (strict/funny/vulgar/casual) na bazie podobienstwa embedow, znaku ! i slow technicznych; dynamiczny wybor promptu.
+- Prompty: krotkie, z wytycznymi dla kazdego stylu; temperature: strict 0.01, funny/vulgar 0.3, casual 0.15; max_new_tokens=240.
+- Fallback: gdy model nie zwroci tekstu, komunikat "Nie otrzymalem odpowiedzi od modelu.".
+
+2) Jak testowano
+- Zadawano pytania on-topic i off-topic bez okreslania stylu (style="auto"), co uruchamia auto-detekcje.
+- Kontekst drukowany przed odpowiedzia pozwala ocenic, czy retrieval zwrocil adekwatne fragmenty (brak duplikatow).
+- Testy odpalane pojedynczo (CPU), aby uniknac wrazenia zawieszenia.
+
+3) Wybrane fragmenty dialogu
+on-topic: --------------------
+PYTANIE:
+Co to jest TCP?
+----------------------------------------
+KONTEKST:
+Zatwierdź punkty aby kontroler obliczył dokładną pozycję TCP.
+
+Zamocuj na robocie precyzyjny wskaźnik (igłę) o znanym TCP.
+
+Zweryfikuj TCP poprzez podjechanie do tego samego punktu z innych orientacji; dopuszczalne odchylenie to mniej niż 0.05 mm.
+----------------------------------------
+ODPOWIEDŹ (strict):
+TCP to pole w układzie, które określa położenie roboty w przestrzeni. Jest to pole, które może być zmieniane przez użytkownika i jest używane do kontroli roboty.
+
+PYTANIE:
+Ile ujęć wzorca należy wykonać dla kamery?
+----------------------------------------
+KONTEKST:
+Wykonaj serię 15 ujęć wzorca poruszając nim w polu widzenia kamery.
+
+Ustaw wzorzec kalibracyjny w polu widzenia kamery i zapamiętaj jego pozycję w układzie kamery.
+
+Pierwszym etapem jest kalibracja parametrów wewnętrznych kamery (Camera Intrinsics).
+----------------------------------------
+ODPOWIEDŹ (casual):
+Zadanie polega na wykonaniu 15 ujęć wzorca. Każdy z nich powinien być wykonany w różnych kątach widzenia kamery, aby pokazać różne aspekty obrazu. Wszystkie ujęcia powinny być wykonane w tym samym miejscu, ale z różnymi kątownymi kierunkami kamery.
+
+off-topic ----------------
+
+PYTANIE:
+Ile wynosi prędkość światła?
+----------------------------------------
+KONTEKST:
+W przypadku niespójnych wyników wizyjnych dostrój częstotliwość lamp stroboskopowych.
+
+Błąd reprojekcji RMS musi być mniejszy niż 0.3 piksela dla zaakceptowania kalibracji.
+
+10 minut.
+----------------------------------------
+ODPOWIEDŹ (casual):
+Hej, tego nie mam w dokumentach!
+
+PYTANIE:
+Ile wynosi prędkość światła?
+----------------------------------------
+KONTEKST:
+W przypadku niespójnych wyników wizyjnych dostrój częstotliwość lamp stroboskopowych.
+
+Błąd reprojekcji RMS musi być mniejszy niż 0.3 piksela dla zaakceptowania kalibracji.
+
+10 minut.
+----------------------------------------
+ODPOWIEDŹ (casual):
+Hej, tego nie mam w dokumentach!
+
+PYTANIE:
+Jak ugotować jajko na twardo?
+----------------------------------------
+KONTEKST:
+Zainstaluj narzędzie kalibracyjne (punktownik) w miejsce chwytaka.
+
+Należy zamontować wzorzec szachownicy na sztywnej płycie na stole roboczym.
+
+wykorzystujący SVD) aby obliczyć transformację T_R_C.
+----------------------------------------
+ODPOWIEDŹ (casual):
+Hej! Jako asystent nie jestem w stanie pomóc w gotowania jajek, ale mogę Ci powiedzieć, że najlepsze smakowe jajka są gotowane z ciepłej wody i świeżych jajek. Zawsze pamiętaj o dodaniu cukru i mleka, które pomagają w rozpuszczeniu jajka.
+
+Uwaga: powyzsze przyklady off-topic (i kilka halucynacji typu blockchain/TCP) pochodza sprzed twardej blokady score < 0.35. Obecnie otrzymalyby odpowiedz odmowna.
+
+o osoby: -----------
+
+PYTANIE:
+Kto odpowiada za szkolenia operatorów?
+----------------------------------------
+KONTEKST:
+Odpowiedzialnym za szkolenia i certyfikację operatorów jest Główny Inżynier Wizji.
+
+Procedurę może wykonywać wyłącznie operator posiadający certyfikat Vision System Level 2.
+
+Odpowiedzialnym za nadzór nad procedurą jest Kierownik Utrzymania Ruchu Automatyki.
+----------------------------------------
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+ODPOWIEDŹ (strict):
+Główny Inżynier Wizji odpowiada za szkolenia operatorów.
+
+PYTANIE:
+Jaki jest kontakt do Jana Kowalskiego?
+----------------------------------------
+KONTEKST:
+Kontakt: Jan Kowalski jan.kowalski@firma.pl.
+
+Kontakt: Anna Nowak anna.nowak@firma.pl.
+
+Ostatnim etapem jest walidacja i dokumentacja.
+----------------------------------------
+ODPOWIEDŹ (casual):
+Witam! Twój kontakt do Jana Kowalskiego to jan.kowalski@firma.pl.
+
+inne techniczne: -------------
+PYTANIE:
+Co to jest blockchain?
+----------------------------------------
+KONTEKST:
+Kontakt: Anna Nowak anna.nowak@firma.pl.
+
+Zamocuj na robocie precyzyjny wskaźnik (igłę) o znanym TCP.
+
+10 minut.
+----------------------------------------
+ODPOWIEDŹ (strict):
+Blockchain to struktura danych, która umożliwia chronienie transakcji w czasie rzeczywistym i przyszłościowe. Każda transakcja jest przechowywana jako blok, który zawiera informacje o transakcji oraz hasz poprzedniego bloku. Hasz bloku jest wygenerowany przez komputer, który używa algorytmu SHA-256. Każdy blok jest jednym z elementów ciągu blockchain, który jest chroniony przez klucz prywatny i publiczną.
+
+absurdalne:
+PYTANIE:
+Czy roboty marzą o elektrycznych owcach?
+----------------------------------------
+KONTEKST:
+Przed rozpoczęciem upewnij się, że robot jest w trybie T1 (Manual Reduced Speed), a strefa robocza jest odgrodzona.
+
+Doprowadź wskaźnik robota do fizycznego środka przynajmniej 3 różnych punktów na wzorcu.
+
+Zapisz parametry w nieulotnej pamięci robota (SRAM) oraz w systemie nadrzędnym (MES).
+----------------------------------------
+ODPOWIEDŹ (strict):
+Nie, roboty nie marzą o elektrycznych owcach.
+
+częściowo związane: -------------------------
+
+PYTANIE:
+Co to jest kalibracja?
+----------------------------------------
+KONTEKST:
+Kalibracja ma na celu ustalenie precyzyjnej transformacji geometrycznej pomiędzy układem współrzędnych kamery, robota, narzędzia i stołu.
+
+Przygotuj raport kalibracyjny zawierający wszystkie parametry, wykresy błędów i wynik testu.
+
+Uruchom algorytm kalibracji wewnętrznej w oprogramowaniu wizyjnym.
+----------------------------------------
+ODPOWIEDŹ (strict):
+Kalibracja to proces ustalania precyzyjnej transformacji geometrycznej między układami współrzędnych kamery, robota, narzędzia i stołem. Jest to kluczowa procedura w realizacji robotiki wizualnej, która pozwala na przekształcenie obrazów do systemu współrzędnych robotu.
+
+PYTANIE:
+Co to jest kamera?
+----------------------------------------
+KONTEKST:
+Ustaw wzorzec kalibracyjny w polu widzenia kamery i zapamiętaj jego pozycję w układzie kamery.
+
+Procedura kalibracji systemu wizyjnego kamera-robot jest dokumentem obowiązującym dla operatorów komórek zrobotyzowanych.
+
+Wykonaj serię 15 ujęć wzorca poruszając nim w polu widzenia kamery.
+----------------------------------------
+ODPOWIEDŹ (strict):
+Kamera to urządzenie do wykonywania zdjęć lub ujęć. Jest używana w wielu dziedzinach, takich jak fotografia, filmowanie, technika sztuki, robotyka i nauka.
+
+PYTANIE:
+Czy każdy może użyć kamery?
+----------------------------------------
+KONTEKST:
+Zapisz za każdym razem pozycję robota oraz pozycję punktu w układzie kamery.
+
+Procedura kalibracji systemu wizyjnego kamera-robot jest dokumentem obowiązującym dla operatorów komórek zrobotyzowanych.
+
+Ustaw wzorzec kalibracyjny w polu widzenia kamery i zapamiętaj jego pozycję w układzie kamery.
+----------------------------------------
+ODPOWIEDŹ (strict):
+Nie, tylko komórki zrobotyzowane.
+
+4) Obserwowane roznice w zachowaniu
+- Po zmianie chunkingu i deduplikacji kontekst przestal sie powtarzac blokami; odpowiedzi sa bardziej skupione.
+- Auto-detekcja stylu: off-topic czesto trafia w funny/strict, dzieki czemu bot odmawia lub odpowiada luzno, bez halucynowania faktow z dokumentu.
+- Temperature zalezne od stylu: strict jest deterministyczny; funny/vulgar (jesli wymuszone) generuja bardziej luzne formy.
+- Wysokie max_new_tokens=240 pozwala na pelne odpowiedzi; na CPU dluzej liczy, dlatego testowac pojedyncze pytania.
+- Przy duzej liczbie testow pod rzad (zwlaszcza na CPU) generacja moze sprawiac wrazenie zawieszenia – to wynik czasu obliczen modelu 1.5B.
+- Twarda odmowa gdy score < 0.35 lub brak kontekstu eliminuje odpowiedzi spoza dokumentu kosztem czestszych odmow przy slabych dopasowaniach.
+
+5) Rekomendacje
+- Na CPU uruchamiac pojedyncze pytania; pakiet testowy zakomentowac i wlaczac wybiorczo.
+- Jesli GPU jest dostepne, mozna zwiekszyc k w retrieval lub uzyc wiekszego modelu (np. 7B), ale uwazac na VRAM.
+- Jesli odpowiedzi beda zbyt krotkie/dlugie, dostosowac max_new_tokens lub temperature per styl.
+- Trzymac parametry w jednym miejscu: k=3 w retrieval, prog MIN_SIMILARITY=0.35 w ask_bot.
+
+6) Pytania kontrolne (na obronę)
+- Jaki model LLM został użyty i dlaczego? → Qwen/Qwen2.5-1.5B-Instruct; mały (1.5B), więc działa na CPU/GPU z niskimi wymaganiami, a nadal zapewnia sensowne odpowiedzi instruktażowe.
+- W jaki sposób przygotowany został dokument źródłowy? → Tekst procedury wpisany w kod jako jeden string, następnie pocięty na zdania regexem i zdeduplikowany przy retrieval, aby kontekst był zwięzły.
+- Jaką rolę pełni funkcja ask_bot? Po co stosowany jest prompt? Co oznacza parametr temperature? → ask_bot łączy retrieval, wybiera styl (auto lub podany), buduje prompt z kontekstem i uruchamia generator. Prompt pilnuje, by model odpowiadał na podstawie dokumentu i w zadanym tonie. Parametr temperature steruje losowością: strict=0.01 (deterministycznie), funny/vulgar=0.3, casual=0.15.
+- Czym jest architektura RAG? → Retrieval-Augmented Generation: najpierw wyszukiwanie fragmentów (embedding + FAISS), potem generacja z użyciem tych fragmentów jako kontekstu, co ogranicza halucynacje i skraca prompt.
+- Jak działa funkcja retrieve_context? Jakie znaczenie mają parametry k oraz score? → Embedduje pytanie, szuka w FAISS IndexFlatIP top-k (min(k, liczba chunków)), zwraca unikalne zdania. k określa maks. liczbę zwróconych chunków; score (iloczyn skalarowy ~ kosinus) mierzy podobieństwo — im wyższy, tym trafniejszy kontekst.
+- Jaką rolę pełni embedder i do czego są wykorzystywane embeddingi? → Embedder (intfloat/multilingual-e5-base) zamienia pytanie i zdania na wektory; embeddingi służą do wyszukiwania kontekstu (FAISS) i do auto-detekcji stylu na bazie podobieństwa pytanie–kontekst.
+- Jakie są ograniczenia obecnego podejścia? → Model moze halucynowac przy slabym kontekście; odpowiedzi off-topic sa teraz odrzucane (score < 0.35), co moze dac wiecej odmow; brak jeszcze testów dla nowych progów na GPU/CPU.
