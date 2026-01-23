@@ -266,7 +266,7 @@ ODPOWIEDŹ:"""
         prompt,
         max_new_tokens=240,
         temperature=0.01 if style == "strict" else 0.3 if style in ["funny", "vulgar"] else 0.15,
-        do_sample=False,
+        do_sample=True,
         return_full_text=False
     )[0]["generated_text"]
 
@@ -287,9 +287,9 @@ ODPOWIEDŹ:"""
 # 9. Testy
 # ===============================
 # Podstawowe pytania o procedurę
-ask_bot("Ile etapów ma procedura kalibracji?")
-ask_bot("Co to jest TCP?")
-ask_bot("Kto może wykonywać procedurę kalibracji?")
+#ask_bot("Ile etapów ma procedura kalibracji?")
+#ask_bot("Co to jest TCP?")
+ask_bot("Kto może wykonywać procedurę kalibracji?", style="vulgar")
 
 # Pytania o szczegóły techniczne
 ask_bot("Jaki jest maksymalny błąd reprojekcji RMS?")
